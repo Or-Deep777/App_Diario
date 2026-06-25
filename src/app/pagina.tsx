@@ -1,5 +1,6 @@
+import { Feather } from '@expo/vector-icons';
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 interface entradaItem {
     id: number
@@ -32,6 +33,41 @@ export default function DiarioScreen(){
         setEntrada(entradaAtualizada)
     }
 
+    /*const deletarEntrada=(id:number)=>{
+        if (entrada.length===1){
+            Alert.alert("Não foi possível deletar a nota")
+            return
+        } Alert.alert("Apagar nota?","Deseja realmente apagar a nota",
+            [
+                {
+                    text: "Cancelar",
+                    style: "cancel"
+                },
+                {
+                    text: "Confirmar",
+                    style: "destructive",
+                    onPress:()=>executarExclusao(id)
+                }
+            ]
+        )
+    }*/
+
+    const deletarEntrada=(id:number)=>{
+        if (entrada.length===1){
+            alert("Não foi possível deletar a nota")
+            return
+        } const confirmou = window.confirm("Deseja apagar a nota?")
+        if (confirmou) {
+            const entradaFiltrada=entrada.filter(item=>item.id !==id)
+            setEntrada(entradaFiltrada)
+        }
+    }
+
+    const executarExclusao = (id:number)=>{
+        const entradaFiltrada=entrada.filter(item=>item.id !==id)
+        setEntrada(entradaFiltrada)
+    }
+
     const salvarNota = ()=>{
         if (!titulo) {
             alert("Por favor, preencha o título e o conteúdo antes de salvar!")
@@ -42,7 +78,6 @@ export default function DiarioScreen(){
             alert("Por favor, escreva algo na primeira entrada!")
             return
         }
-        console.log("Dados que seriam salvos:", {titulo,dataAtual,entrada})
         alert(`Nota: "${titulo}" salva com sucesso!`)
     }
 
@@ -64,6 +99,9 @@ export default function DiarioScreen(){
 
             {entrada.map((item)=>(
                 <View style={styles.blocoEntrada}>
+                    <TouchableOpacity onPress={()=>deletarEntrada(item.id)} style={styles.botaoLixeira}>
+                        <Feather name="trash-2" size={24} color="black" />
+                        </TouchableOpacity>
                     <TextInput 
                     style={styles.inputConteudo}
                     placeholder="..."
@@ -141,12 +179,21 @@ const styles = StyleSheet.create({
             width: 0,
             height: 1
         },
-        shadowOpacity: 0.1
+        shadowOpacity: 0.1,
+        position: "relative"
+    },
+    botaoLixeira: {
+        position: "absolute",
+        top: 15,
+        right: 15,
+        zIndex: 10,
+        padding: 5
     },
     inputConteudo: {
         fontSize: 16,
         height: 150,
-        color: "#333"
+        color: "#333",
+        paddingRight: 40
     },
     botaoAdicionar: {
         backgroundColor: '#fff',
