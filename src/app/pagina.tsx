@@ -1,19 +1,49 @@
-"use client"
-
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+interface entradaItem {
+    id: number
+    conteudo: string
+}
+
 export default function DiarioScreen(){
     const [titulo,setTitulo] = useState("")
-    const [texto,setTexto] = useState("")
+
+    const [entrada,setEntrada] = useState<entradaItem[]>([
+        {id:Date.now(), conteudo:""}
+    ])
 
     const dataAtual = new Date().toLocaleDateString('pt-BR')
 
+    const addNovaEntrada=()=>{
+        const novaEntrada: entradaItem={
+            id:Date.now(), conteudo:""
+        }
+        setEntrada([...entrada,novaEntrada])
+    }
+
+    const atualizarEntrada=(id:number, campo:"subtitulo" | "conteudo", valor: string)=>{
+        const entradaAtualizada=entrada.map(item=>{
+            if(item.id === id){
+                return{...item, [campo]:valor}
+            }
+            return item
+        })
+        setEntrada(entradaAtualizada)
+    }
+
     const salvarNota = ()=>{
-        if (!titulo || !texto) {
+        if (!titulo) {
             alert("Por favor, preencha o título e o conteúdo antes de salvar!")
             return
-        } alert ("Nota salva com sucesso")
+        }
+
+        if (entrada.length === 0 || !entrada[0].conteudo){
+            alert("Por favor, escreva algo na primeira entrada!")
+            return
+        }
+        console.log("Dados que seriam salvos:", {titulo,dataAtual,entrada})
+        alert(`Nota: "${titulo}" salva com sucesso!`)
     }
 
     return(
@@ -26,21 +56,29 @@ export default function DiarioScreen(){
 
             <TextInput 
             style={styles.inputTitulo}
-            placeholder="Ditite o título da sua nota"
+            placeholder="Digite o título da sua nota"
             placeholderTextColor="#999"
             value={titulo}
             onChangeText={setTitulo}
             />
 
-            <TextInput 
-            style={styles.inputConteudo}
-            placeholder="..."
-            placeholderTextColor='#999'
-            multiline={true}
-            textAlignVertical="top"
-            value={texto}
-            onChangeText={setTexto}
-            />
+            {entrada.map((item)=>(
+                <View style={styles.blocoEntrada}>
+                    <TextInput 
+                    style={styles.inputConteudo}
+                    placeholder="..."
+                    placeholderTextColor="#999"
+                    multiline={true}
+                    textAlignVertical="top"
+                    value={item.conteudo}
+                    onChangeText={(valor)=>atualizarEntrada(item.id,"conteudo",valor)}
+                    />
+                </View>
+            ))}
+
+            <TouchableOpacity onPress={addNovaEntrada} style={styles.botaoAdicionar}>
+                <Text style={styles.botaoAdicionarTexto}>Novo topico</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={salvarNota} style={styles.botaoSalvar}>
                 <Text style={styles.botaoTexto}>Salvar Nota</Text>
@@ -88,7 +126,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E0E0E0'
     },
-    inputConteudo: {
+    blocoEntrada: {
         backgroundColor: '#fff',
         borderRadius: 8,
         padding: 15,
@@ -96,13 +134,40 @@ const styles = StyleSheet.create({
         height: 300,
         marginBottom: 20,
         borderWidth: 1,
-        borderColor: '#E0E0E0'
+        borderColor: '#E0E0E0',
+        elevation: 1,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 1
+        },
+        shadowOpacity: 0.1
+    },
+    inputConteudo: {
+        fontSize: 16,
+        height: 150,
+        color: "#333"
+    },
+    botaoAdicionar: {
+        backgroundColor: '#fff',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: '#4A90E2',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        marginBottom: 20
+    },
+    botaoAdicionarTexto: {
+        color: '#4A90E2',
+        fontSize: 16,
+        fontWeight: 'bold'
     },
     botaoSalvar: {
         backgroundColor: '#4A90E2',
         padding: 15,
         borderRadius: 8,
-        alignContent: 'center'
+        alignItems: 'center'
     },
     botaoTexto: {
         color: '#fff',
