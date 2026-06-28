@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 interface entradaItem {
     id: number
@@ -9,6 +10,7 @@ interface entradaItem {
 
 export default function DiarioScreen(){
     const [titulo,setTitulo] = useState("")
+    const [fotos,setFotos] = useState<string[]>([])
 
     const [entrada,setEntrada] = useState<entradaItem[]>([
         {id:Date.now(), conteudo:""}
@@ -81,6 +83,23 @@ export default function DiarioScreen(){
         alert(`Nota: "${titulo}" salva com sucesso!`)
     }
 
+    const escolhaImagem = async()=>{
+        let imgEscolhida = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality:1
+        })
+        if (!imgEscolhida.canceled){
+            const novasFotos = imgEscolhida.assets.map(asset=>asset.uri)
+            setFotos([...fotos,...novasFotos])
+        }
+    }
+
+    const removerFoto = (indexRemover:number)=>{
+        const fotosFiltradas = fotos.filter((_,index)=>index!==indexRemover)
+        setFotos(fotosFiltradas)
+    }
+
     return(
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <Text style={styles.header}>Meu Diário</Text>
@@ -117,6 +136,23 @@ export default function DiarioScreen(){
             <TouchableOpacity onPress={addNovaEntrada} style={styles.botaoAdicionar}>
                 <Text style={styles.botaoAdicionarTexto}>Novo topico</Text>
             </TouchableOpacity>
+
+            <View style={styles.secaoFotos}>
+                <Text style={styles.tituloSecao}>Fotos</Text>
+                <ScrollView style={styles.listaFotos} horizontal={true} showsHorizontalScrollIndicator={false}>
+                    {fotos.map((uri,index)=>(
+                        <View key={index} style={styles.containerFoto}>
+                            <Image source={{uri:uri}} style={styles.fotoMiniatura}/>
+                            <TouchableOpacity style={styles.botaoRemoverFoto} onPress={()=>removerFoto(index)}>
+                                <Text style={styles.textoRemoverFoto}>x</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </ScrollView>
+                <TouchableOpacity style={styles.botaoAddFoto} onPress={escolhaImagem}>
+                    <Text style={styles.botaoAddFotoTexto}>Adicionar foto</Text>
+                </TouchableOpacity>
+            </View>
 
             <TouchableOpacity onPress={salvarNota} style={styles.botaoSalvar}>
                 <Text style={styles.botaoTexto}>Salvar Nota</Text>
@@ -203,7 +239,7 @@ const styles = StyleSheet.create({
         borderColor: '#4A90E2',
         borderStyle: 'dashed',
         alignItems: 'center',
-        marginBottom: 20
+        marginBottom: 10
     },
     botaoAdicionarTexto: {
         color: '#4A90E2',
@@ -220,5 +256,61 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold'
+    },
+    secaoFotos:{
+        marginTop:10,
+        marginBottom: 20,
+        backgroundColor:"#fff",
+        padding:15,
+        borderRadius:8,
+        borderWidth:1,
+        borderColor:"#E0E0E0"
+    },
+    tituloSecao:{
+        fontSize:16,
+        fontWeight:"bold",
+        color:"#444",
+        marginBottom:10
+    },
+    listaFotos:{
+        flexDirection:"row",
+        marginBottom:10
+    },
+    containerFoto:{
+        position:"relative",
+        marginBottom:10
+    },
+    fotoMiniatura:{
+        width:80,
+        height:80,
+        borderRadius:6
+    },
+    botaoRemoverFoto:{
+        position:"absolute",
+        top:-5,
+        right: -5,
+        backgroundColor: "#EF4444",
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center"
+    },
+    textoRemoverFoto:{
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "bold",
+        lineHeight: 16
+    },
+    botaoAddFoto:{
+        backgroundColor: "#ECEFF1",
+        padding: 12,
+        borderRadius: 8,
+        alignItems: "center"
+    },
+    botaoAddFotoTexto:{
+        color: "#37474F",
+        fontSize: 16,
+        fontWeight: "bold"
     }
 })
