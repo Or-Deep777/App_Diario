@@ -24,10 +24,27 @@ export default function DiarioScreen(){
     }
     const [dataSelecionada,setDataSelecionada] = useState(obterDataInicial())
     const [calendario,setCalendario] = useState(false)
+    const [mudou,setMudou] = useState(false)
     
     const [entrada,setEntrada] = useState<entradaItem[]>([
         {id:Date.now(), conteudo:""}
     ])
+
+    const voltar=()=>{
+        if(modo === "visualizar" || !mudou){
+            router.back()
+            return
+        }
+        Alert.alert("Alterações não salvas", "Você fez alterações nesse dia e não salvou, voltar agora apagará as modificações mais recentes",
+        [
+            {text: "Ficar na tela", style: "cancel"},
+            {
+                text: "Sair mesmo assim",
+                style: "destructive",
+                onPress:()=>router.back()
+            }
+        ])
+    }
 
     const mudarData = (event:any,dateSelected?:Date)=>{
         setCalendario(false)
@@ -37,12 +54,18 @@ export default function DiarioScreen(){
         }
     }
 
+    const tratarMudancaTitulo = (texto:string)=>{
+        setTitulo(texto)
+        if(modo !== "visualizar") setMudou(true)
+    }
+
     const addNovaEntrada=()=>{
         const novaEntrada: entradaItem={
             id:Date.now(), 
             conteudo:""
         }
         setEntrada([...entrada,novaEntrada])
+        setMudou(true)
     }
 
     useEffect(()=>{
@@ -78,6 +101,7 @@ export default function DiarioScreen(){
             return item
         })
         setEntrada(entradaAtualizada)
+        setMudou(true)
     }
 
     const deletarEntrada=(id:number)=>{
@@ -119,6 +143,7 @@ export default function DiarioScreen(){
             Alert.alert("Sucesso","Suas memórias foram registradas", [
                 {text: "OK", onPress:()=>{
                     if (router.canGoBack()) {
+                        setMudou(false)
                         router.back()
                     } else {
                         router.replace("/")
@@ -140,16 +165,22 @@ export default function DiarioScreen(){
         if (!imgEscolhida.canceled){
             const novasFotos = imgEscolhida.assets.map(asset=>asset.uri)
             setFotos([...fotos,...novasFotos])
+            setMudou(true)
         }
     }
 
     const removerFoto = (indexRemover:number)=>{
         const fotosFiltradas = fotos.filter((_,index)=>index!==indexRemover)
         setFotos(fotosFiltradas)
+        setMudou(true)
     }
 
     return(
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <TouchableOpacity style={styles.botaoVoltar} onPress={voltar} activeOpacity={0.6}>
+                <Feather name="arrow-left" size={24} color="#4A90E2"/>
+                <Text style={styles.textoVoltar}>Voltar</Text>
+            </TouchableOpacity>
             <Text style={styles.header}>{modo === "visualizar" ? "Bom vê-lo novamente" : "Como foi seu dia?"}</Text>
             <View style={styles.dateContainer}>
                 <Text style={styles.dateLabel}>Data:</Text>
@@ -398,5 +429,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#4A90E2",
         fontWeight: "600"
+    },
+    botaoVoltar:{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        marginBottom: 10,
+        alignSelf: "flex-start"
+    },
+    textoVoltar:{
+        fontSize: 16,
+        color: "#4A90E2",
+        fontWeight: "600",
+        marginLeft: 6
     }
 })
