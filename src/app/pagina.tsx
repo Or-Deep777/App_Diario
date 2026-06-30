@@ -25,6 +25,7 @@ export default function DiarioScreen(){
     const [dataSelecionada,setDataSelecionada] = useState(obterDataInicial())
     const [calendario,setCalendario] = useState(false)
     const [mudou,setMudou] = useState(false)
+    const [notaExiste,setNotaExiste] = useState(false)
     
     const [entrada,setEntrada] = useState<entradaItem[]>([
         {id:Date.now(), conteudo:""}
@@ -46,11 +47,35 @@ export default function DiarioScreen(){
         ])
     }
 
+    const verificarNota = async(dataChecar:string)=>{
+        if (modo === "visualizar" || (modo === "editar" && dataChecar === data)){
+            setNotaExiste(false)
+            return
+        }
+        try{
+            const chaveData = `diario_${dataChecar}`
+            const dadosTexto = await AsyncStorage.getItem(chaveData)
+            setNotaExiste(dadosTexto !== null)
+        } catch(error){
+            console.error("Erro ao checar nota existente:", error)
+        }
+    }
+
+    useEffect(()=>{
+        const dataFormatada = dataSelecionada.toLocaleDateString("pt-BR")
+        verificarNota(dataFormatada)
+        if (data && (modo === "visualizar" || modo === "editar")){
+            carregarDados()
+        }
+    }, [data, modo])
+
     const mudarData = (event:any,dateSelected?:Date)=>{
         setCalendario(false)
 
         if (event.type === "set" && dateSelected){
             setDataSelecionada(dateSelected)
+            const novaDataTexto = dateSelected.toLocaleDateString("pt-BR")
+            verificarNota(novaDataTexto)
         }
     }
 
@@ -121,16 +146,7 @@ export default function DiarioScreen(){
         setEntrada(entradaFiltrada)
     }
 
-    const salvarNota = async()=>{
-        if (!titulo.trim()) {
-            Alert.alert("Erro","Por favor, preencha o título principal!")
-            return
-        }
-
-        if (entrada.length === 0 || !entrada[0].conteudo.trim()){
-            Alert.alert("Erro","Por favor, escreva algo na primeira entrada!")
-            return
-        }
+    const executarSalvar = async()=>{
         try{
             const dadosDiario={
                 titulo: titulo,
@@ -141,19 +157,48 @@ export default function DiarioScreen(){
             const dadosTexto = JSON.stringify(dadosDiario)
             await AsyncStorage.setItem(chaveData,dadosTexto)
             Alert.alert("Sucesso","Suas memórias foram registradas", [
-                {text: "OK", onPress:()=>{
-                    if (router.canGoBack()) {
+                {
+                    text: "OK",
+                    onPress:()=>{
                         setMudou(false)
-                        router.back()
-                    } else {
-                        router.replace("/")
+                        if(router.canGoBack()){
+                            router.back()
+                        }else{
+                            router.replace("/")
+                        }
                     }
-                }}
+                }
             ])
         } catch(error){
             console.error(error)
-            Alert.alert("Erro","Não foi possível salvar sua nota")
+            Alert.alert("Erro","Não foi possível salvar a nota")
         }
+    }
+
+    const salvarNota = async()=>{
+        if (!titulo.trim()) {
+            Alert.alert("Erro","Por favor, preencha o título principal!")
+            return
+        }
+
+        if (entrada.length === 0 || !entrada[0].conteudo.trim()){
+            Alert.alert("Erro","Por favor, escreva algo na primeira entrada!")
+            return
+        }
+        if (notaExiste) {
+            Alert.alert("Substituir Registro?","Já existe uma memória registrada nesse dia. Salvar vai substituir o registro anterior.",
+                [
+                    { text: "Cancelar", style: "cancel"},
+                    {
+                        text: "Substituir",
+                        style: "destructive",
+                        onPress:()=>executarSalvar()
+                    }
+                ]
+            )
+            return
+        }
+        executarSalvar()
     }
 
     const escolhaImagem = async()=>{
@@ -189,6 +234,11 @@ export default function DiarioScreen(){
                         {dataSelecionada.toLocaleDateString("pt-BR")}
                     </Text>
                 </TouchableOpacity>
+                {notaExiste && (
+                    <TouchableOpacity style={styles.alertaData} onPress={()=>Alert.alert("Conflito nos dias","Já existe uma memória registrada nesse dia. Salvar vai substituir o registro anterior.")}>
+                        <Feather name='alert-triangle' size={22} color="#F59E0B"/>
+                    </TouchableOpacity>
+                )}
                 {calendario && (
                     <DateTimePicker 
                         value={dataSelecionada}
@@ -442,5 +492,11 @@ const styles = StyleSheet.create({
         color: "#4A90E2",
         fontWeight: "600",
         marginLeft: 6
+    },
+    alertaData:{
+        marginLeft: 10,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 5
     }
 })
