@@ -1,7 +1,10 @@
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from "react";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 interface entradaItem {
     id: number
@@ -11,58 +14,82 @@ interface entradaItem {
 export default function DiarioScreen(){
     const [titulo,setTitulo] = useState("")
     const [fotos,setFotos] = useState<string[]>([])
-
+    const { data, modo } = useLocalSearchParams<{data?:string; modo?:"visualizar" | "editar"}>()
+    const obterDataInicial = ()=>{
+        if (data) {
+            const [dia,mes,ano] = data.split("/").map(Number)
+            return new Date(ano, mes-1, dia)
+        }
+        return new Date()
+    }
+    const [dataSelecionada,setDataSelecionada] = useState(obterDataInicial())
+    const [calendario,setCalendario] = useState(false)
+    
     const [entrada,setEntrada] = useState<entradaItem[]>([
         {id:Date.now(), conteudo:""}
     ])
 
-    const dataAtual = new Date().toLocaleDateString('pt-BR')
+    const mudarData = (event:any,dateSelected?:Date)=>{
+        setCalendario(false)
+
+        if (event.type === "set" && dateSelected){
+            setDataSelecionada(dateSelected)
+        }
+    }
 
     const addNovaEntrada=()=>{
         const novaEntrada: entradaItem={
-            id:Date.now(), conteudo:""
+            id:Date.now(), 
+            conteudo:""
         }
         setEntrada([...entrada,novaEntrada])
     }
 
-    const atualizarEntrada=(id:number, campo:"subtitulo" | "conteudo", valor: string)=>{
+    useEffect(()=>{
+        if (data && (modo === "visualizar" || modo === "editar")){
+            carregarDados()
+        }
+    },[data, modo])
+
+    const carregarDados = async()=>{
+        try{
+            const chaveData = `diario_${data}`
+            const dadosTexto = await AsyncStorage.getItem(chaveData)
+            console.log("Chave buscada:", chaveData)
+            console.log("Conteúdo encontrado no celular:", dadosTexto)
+
+            if (dadosTexto){
+                const dadosValidos = JSON.parse(dadosTexto)
+                setTitulo(dadosValidos.titulo)
+                setEntrada(dadosValidos.entradas || [])
+                setFotos(dadosValidos.fotos || [])
+            }
+        } catch(error){
+            console.error("Erro ao carregar dados do dia:", error)
+            Alert.alert("Erro", "Não foi possível carregar os registros desse dia")
+        }
+    }
+
+    const atualizarEntrada=(id:number, valor: string)=>{
         const entradaAtualizada=entrada.map(item=>{
             if(item.id === id){
-                return{...item, [campo]:valor}
+                return{...item, conteudo:valor}
             }
             return item
         })
         setEntrada(entradaAtualizada)
     }
 
-    /*const deletarEntrada=(id:number)=>{
-        if (entrada.length===1){
-            Alert.alert("Não foi possível deletar a nota")
-            return
-        } Alert.alert("Apagar nota?","Deseja realmente apagar a nota",
-            [
-                {
-                    text: "Cancelar",
-                    style: "cancel"
-                },
-                {
-                    text: "Confirmar",
-                    style: "destructive",
-                    onPress:()=>executarExclusao(id)
-                }
-            ]
-        )
-    }*/
-
     const deletarEntrada=(id:number)=>{
         if (entrada.length===1){
-            alert("Não foi possível deletar a nota")
+            Alert.alert("Atenção","Seu diário precisa ter pelo menos um tópico")
             return
-        } const confirmou = window.confirm("Deseja apagar a nota?")
-        if (confirmou) {
-            const entradaFiltrada=entrada.filter(item=>item.id !==id)
-            setEntrada(entradaFiltrada)
-        }
+        } Alert.alert("Apagar nota","Deseja realmente apagar a nota?",
+            [
+                {text: "Cancelar", style: "cancel"},
+                {text: "Confirmar", style: "destructive", onPress:()=>executarExclusao(id)}
+            ]
+        )
     }
 
     const executarExclusao = (id:number)=>{
@@ -70,17 +97,38 @@ export default function DiarioScreen(){
         setEntrada(entradaFiltrada)
     }
 
-    const salvarNota = ()=>{
-        if (!titulo) {
-            alert("Por favor, preencha o título e o conteúdo antes de salvar!")
+    const salvarNota = async()=>{
+        if (!titulo.trim()) {
+            Alert.alert("Erro","Por favor, preencha o título principal!")
             return
         }
 
-        if (entrada.length === 0 || !entrada[0].conteudo){
-            alert("Por favor, escreva algo na primeira entrada!")
+        if (entrada.length === 0 || !entrada[0].conteudo.trim()){
+            Alert.alert("Erro","Por favor, escreva algo na primeira entrada!")
             return
         }
-        alert(`Nota: "${titulo}" salva com sucesso!`)
+        try{
+            const dadosDiario={
+                titulo: titulo,
+                entradas: entrada,
+                fotos: fotos
+            }
+            const chaveData = `diario_${dataSelecionada.toLocaleDateString("pt-BR")}`
+            const dadosTexto = JSON.stringify(dadosDiario)
+            await AsyncStorage.setItem(chaveData,dadosTexto)
+            Alert.alert("Sucesso","Suas memórias foram registradas", [
+                {text: "OK", onPress:()=>{
+                    if (router.canGoBack()) {
+                        router.back()
+                    } else {
+                        router.replace("/")
+                    }
+                }}
+            ])
+        } catch(error){
+            console.error(error)
+            Alert.alert("Erro","Não foi possível salvar sua nota")
+        }
     }
 
     const escolhaImagem = async()=>{
@@ -102,10 +150,23 @@ export default function DiarioScreen(){
 
     return(
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-            <Text style={styles.header}>Meu Diário</Text>
+            <Text style={styles.header}>{modo === "visualizar" ? "Bom vê-lo novamente" : "Como foi seu dia?"}</Text>
             <View style={styles.dateContainer}>
                 <Text style={styles.dateLabel}>Data:</Text>
-                <Text style={styles.dateText}>{dataAtual}</Text>
+                <TouchableOpacity style={styles.inputData} onPress={()=>modo !== "visualizar" && setCalendario(true)} activeOpacity={modo === "visualizar" ? 1:0.7}>
+                    <Text style={styles.textoDataBotao}>
+                        {dataSelecionada.toLocaleDateString("pt-BR")}
+                    </Text>
+                </TouchableOpacity>
+                {calendario && (
+                    <DateTimePicker 
+                        value={dataSelecionada}
+                        mode="date"
+                        display='default'
+                        onChange={mudarData}
+                        maximumDate={new Date()}
+                    />
+                )}
             </View>
 
             <TextInput 
@@ -114,13 +175,16 @@ export default function DiarioScreen(){
             placeholderTextColor="#999"
             value={titulo}
             onChangeText={setTitulo}
+            editable={modo !== "visualizar"}
             />
 
             {entrada.map((item)=>(
-                <View style={styles.blocoEntrada}>
-                    <TouchableOpacity onPress={()=>deletarEntrada(item.id)} style={styles.botaoLixeira}>
-                        <Feather name="trash-2" size={24} color="black" />
+                <View key={item.id} style={styles.blocoEntrada}>
+                    {modo !== "visualizar" && (
+                        <TouchableOpacity onPress={()=>deletarEntrada(item.id)} style={styles.botaoLixeira}>
+                            <Feather name="trash-2" size={24} color="#EF4444" />
                         </TouchableOpacity>
+                    )}
                     <TextInput 
                     style={styles.inputConteudo}
                     placeholder="..."
@@ -128,14 +192,17 @@ export default function DiarioScreen(){
                     multiline={true}
                     textAlignVertical="top"
                     value={item.conteudo}
-                    onChangeText={(valor)=>atualizarEntrada(item.id,"conteudo",valor)}
+                    onChangeText={(valor)=>atualizarEntrada(item.id,valor)}
+                    editable={modo !== "visualizar"}
                     />
                 </View>
             ))}
 
-            <TouchableOpacity onPress={addNovaEntrada} style={styles.botaoAdicionar}>
-                <Text style={styles.botaoAdicionarTexto}>Novo topico</Text>
-            </TouchableOpacity>
+            {modo !== "visualizar" && (
+                <TouchableOpacity onPress={addNovaEntrada} style={styles.botaoAdicionar}>
+                    <Text style={styles.botaoAdicionarTexto}>Novo topico</Text>
+                </TouchableOpacity>
+            )}
 
             <View style={styles.secaoFotos}>
                 <Text style={styles.tituloSecao}>Fotos</Text>
@@ -143,20 +210,26 @@ export default function DiarioScreen(){
                     {fotos.map((uri,index)=>(
                         <View key={index} style={styles.containerFoto}>
                             <Image source={{uri:uri}} style={styles.fotoMiniatura}/>
-                            <TouchableOpacity style={styles.botaoRemoverFoto} onPress={()=>removerFoto(index)}>
-                                <Text style={styles.textoRemoverFoto}>x</Text>
-                            </TouchableOpacity>
+                            {modo !== "visualizar" && (
+                                <TouchableOpacity style={styles.botaoRemoverFoto} onPress={()=>removerFoto(index)}>
+                                    <Text style={styles.textoRemoverFoto}>x</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     ))}
                 </ScrollView>
-                <TouchableOpacity style={styles.botaoAddFoto} onPress={escolhaImagem}>
-                    <Text style={styles.botaoAddFotoTexto}>Adicionar foto</Text>
-                </TouchableOpacity>
+                {modo !== "visualizar" && (
+                    <TouchableOpacity style={styles.botaoAddFoto} onPress={escolhaImagem}>
+                        <Text style={styles.botaoAddFotoTexto}>Adicionar foto</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
-            <TouchableOpacity onPress={salvarNota} style={styles.botaoSalvar}>
-                <Text style={styles.botaoTexto}>Salvar Nota</Text>
-            </TouchableOpacity>
+            {modo !== "visualizar" && (
+                <TouchableOpacity onPress={salvarNota} style={styles.botaoSalvar}>
+                    <Text style={styles.botaoTexto}>Salvar Nota</Text>
+                </TouchableOpacity>
+            )}
         </ScrollView>
     )
 }
@@ -312,5 +385,18 @@ const styles = StyleSheet.create({
         color: "#37474F",
         fontSize: 16,
         fontWeight: "bold"
+    },
+    inputData:{
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#E0E0E0",
+        borderRadius: 6,
+        paddingHorizontal: 15,
+        paddingVertical: 8
+    },
+    textoDataBotao:{
+        fontSize: 16,
+        color: "#4A90E2",
+        fontWeight: "600"
     }
 })
