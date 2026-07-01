@@ -119,7 +119,7 @@ export default function HomeScreen() {
       ):(
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {notas.map((nota)=>(
-            <TouchableOpacity key={nota.dataChave} style={styles.cardNota} activeOpacity={0.7} onPress={()=> { console.log("Clique rápido detectado, data:", nota.dataChave); abrirModoVisualizacao(nota.dataChave)}} onLongPress={()=>abrirSubMenu(nota)}>
+            <TouchableOpacity key={nota.dataChave} style={styles.cardNota} activeOpacity={0.7} onPress={()=> {abrirModoVisualizacao(nota.dataChave)}} onLongPress={()=>abrirSubMenu(nota)}>
               <View style={styles.topoCard}>
                 <Text style={styles.cardData}>{nota.dataChave}</Text>
                 <View style={styles.badgesContainer}>

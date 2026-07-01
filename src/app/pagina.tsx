@@ -4,7 +4,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 interface entradaItem {
     id: number
@@ -26,6 +26,7 @@ export default function DiarioScreen(){
     const [calendario,setCalendario] = useState(false)
     const [mudou,setMudou] = useState(false)
     const [notaExiste,setNotaExiste] = useState(false)
+    const [fotoZoom,setFotoZoom] = useState<string | null>(null)
     
     const [entrada,setEntrada] = useState<entradaItem[]>([
         {id:Date.now(), conteudo:""}
@@ -103,8 +104,6 @@ export default function DiarioScreen(){
         try{
             const chaveData = `diario_${data}`
             const dadosTexto = await AsyncStorage.getItem(chaveData)
-            console.log("Chave buscada:", chaveData)
-            console.log("Conteúdo encontrado no celular:", dadosTexto)
 
             if (dadosTexto){
                 const dadosValidos = JSON.parse(dadosTexto)
@@ -275,6 +274,7 @@ export default function DiarioScreen(){
                     value={item.conteudo}
                     onChangeText={(valor)=>atualizarEntrada(item.id,valor)}
                     editable={modo !== "visualizar"}
+                    scrollEnabled={false}
                     />
                 </View>
             ))}
@@ -290,7 +290,9 @@ export default function DiarioScreen(){
                 <ScrollView style={styles.listaFotos} horizontal={true} showsHorizontalScrollIndicator={false}>
                     {fotos.map((uri,index)=>(
                         <View key={index} style={styles.containerFoto}>
-                            <Image source={{uri:uri}} style={styles.fotoMiniatura}/>
+                            <TouchableOpacity activeOpacity={0.9} onPress={()=>setFotoZoom(uri)}>
+                                <Image source={{uri:uri}} style={styles.fotoMiniatura} />
+                            </TouchableOpacity>
                             {modo !== "visualizar" && (
                                 <TouchableOpacity style={styles.botaoRemoverFoto} onPress={()=>removerFoto(index)}>
                                     <Text style={styles.textoRemoverFoto}>x</Text>
@@ -298,6 +300,13 @@ export default function DiarioScreen(){
                             )}
                         </View>
                     ))}
+                    <Modal visible={fotoZoom !== null} transparent={true} animationType='fade' onRequestClose={()=>setFotoZoom(null)}>
+                        <TouchableOpacity style={styles.modalZoomContainer} activeOpacity={1} onPress={()=>setFotoZoom(null)}>
+                            {fotoZoom && (
+                                <Image source={{uri:fotoZoom}} style={styles.fotoZoomGrande} resizeMode='contain' />
+                            )}
+                        </TouchableOpacity>
+                    </Modal>
                 </ScrollView>
                 {modo !== "visualizar" && (
                     <TouchableOpacity style={styles.botaoAddFoto} onPress={escolhaImagem}>
@@ -322,7 +331,8 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         padding: 20,
-        paddingTop: 60
+        paddingTop: 60,
+        paddingBottom: 40
     },
     header: {
         fontSize: 28,
@@ -359,7 +369,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 15,
         fontSize: 16,
-        height: 300,
+        minHeight: 150,
         marginBottom: 20,
         borderWidth: 1,
         borderColor: '#E0E0E0',
@@ -381,9 +391,14 @@ const styles = StyleSheet.create({
     },
     inputConteudo: {
         fontSize: 16,
-        height: 150,
-        color: "#333",
-        paddingRight: 40
+        color: "#333333",
+        paddingRight: 40,
+        width: "100%",
+        padding: 12,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 8,
+        minHeight: 80,
+        textAlignVertical: "top"
     },
     botaoAdicionar: {
         backgroundColor: '#fff',
@@ -498,5 +513,16 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         padding: 5
+    },
+    modalZoomContainer:{
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.95)",
+        justifyContent: "center",
+        alignItems: "center",
+        position: "relative"
+    },
+    fotoZoomGrande:{
+        width: "100%",
+        height: "80%"
     }
 })
