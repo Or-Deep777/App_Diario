@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "diario",
+    "name": "Diario",
     "slug": "diario",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -36,7 +36,9 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,6 +49,12 @@
       "eas": {
         "projectId": "a95c9a9a-18a0-4073-b009-5ab0f9c59486"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a95c9a9a-18a0-4073-b009-5ab0f9c59486"
     }
   }
 }
